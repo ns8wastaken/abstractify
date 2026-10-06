@@ -46,9 +46,21 @@ impl Primitive for Shape {
         color: Rgba<u8>,
     ) {
         match self {
-            Shape::Circle(circle) => {
-                circle.set_color(color);
-            }
+            Shape::Circle(circle) => circle.set_color(color),
+        }
+    }
+
+    fn for_each_pixel<F>(
+        &self,
+        width: u32,
+        height: u32,
+        f: F,
+    )
+    where
+        F: FnMut(u32, u32)
+    {
+        match self {
+            Shape::Circle(circle) => circle.for_each_pixel(width, height, f),
         }
     }
 

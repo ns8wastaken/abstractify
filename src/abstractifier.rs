@@ -3,6 +3,7 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 
 use crate::error::ErrorMetric;
+use crate::evaluator::CandidateEvaluator;
 use crate::generator::ShapeGenerator;
 use crate::primitive::{Primitive, Shape};
 
@@ -10,15 +11,15 @@ use crate::primitive::{Primitive, Shape};
 pub struct StepResult {
     pub error: u64,
     pub improvement: Option<u64>,
-    pub candidates_tested: usize,
 }
 
-pub struct Abstractifier<G, E> {
+pub struct Abstractifier<G, E, V> {
     target: RgbaImage,
     canvas: RgbaImage,
 
     generator: G,
     error_metric: E,
+    evaluator: V,
 
     rng: StdRng,
 
@@ -27,16 +28,18 @@ pub struct Abstractifier<G, E> {
     shapes_used: Vec<Shape>,
 }
 
-impl<G, E> Abstractifier<G, E>
+impl<G, E, V> Abstractifier<G, E, V>
 where
     G: ShapeGenerator,
-    E: ErrorMetric,
+    E: ErrorMetric + Sync,
+    V: CandidateEvaluator,
 {
     pub fn new(
         target: RgbaImage,
         canvas: RgbaImage,
         generator: G,
         error_metric: E,
+        evaluator: V,
         candidates_per_step: usize,
         seed: u64,
     ) -> Self {
@@ -48,6 +51,7 @@ where
             shapes_used: Vec::new(),
             generator,
             error_metric,
+            evaluator,
             rng: StdRng::seed_from_u64(seed),
             error,
             candidates_per_step,
@@ -55,10 +59,10 @@ where
     }
 
     pub fn step(&mut self) -> StepResult {
-        let previous_error = self.error;
-
-        let mut best_shape = None;
-        let mut best_error = self.error;
+        let mut candidates =
+            Vec::with_capacity(
+                self.candidates_per_step,
+            );
 
         for _ in 0..self.candidates_per_step {
             let shape = self.generator.generate(
@@ -67,37 +71,48 @@ where
                 &self.canvas,
             );
 
-            let mut candidate = self.canvas.clone();
-            shape.draw(&mut candidate);
-
-            let error = self.error_metric.total(
-                &self.target,
-                &candidate,
-            );
-
-            if error < best_error {
-                best_error = error;
-                best_shape = Some(shape);
-            }
+            candidates.push(shape);
         }
 
-        let Some(shape) = best_shape else {
+        let deltas = self.evaluator.evaluate_batch(
+            &candidates,
+            &self.target,
+            &self.canvas,
+            &self.error_metric,
+        );
+
+        let best = deltas
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, delta)| *delta);
+
+        let Some((index, &delta)) = best else {
             return StepResult {
                 error: self.error,
                 improvement: None,
-                candidates_tested: self.candidates_per_step,
             };
         };
 
-        shape.draw(&mut self.canvas);
-        self.shapes_used.push(shape);
+        if delta >= 0 {
+            return StepResult {
+                error: self.error,
+                improvement: None,
+            };
+        }
 
-        self.error = best_error;
+        let shape = candidates.swap_remove(index);
+
+        shape.draw(&mut self.canvas);
+
+        let improvement = (-delta) as u64;
+
+        self.error -= improvement;
+
+        self.shapes_used.push(shape);
 
         StepResult {
             error: self.error,
-            improvement: Some(previous_error - self.error),
-            candidates_tested: self.candidates_per_step,
+            improvement: Some(improvement),
         }
     }
 

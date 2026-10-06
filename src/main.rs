@@ -4,6 +4,7 @@ mod error;
 mod primitive;
 mod canvas;
 mod generator;
+mod evaluator;
 mod abstractifier;
 
 use clap::Parser;
@@ -14,6 +15,7 @@ use log::{LevelFilter, error, info, warn};
 use crate::abstractifier::Abstractifier;
 use crate::canvas::Canvas;
 use crate::error::SquaredError;
+use crate::evaluator::{CpuEvaluator, CpuMode};
 use crate::generator::CandidateGenerator;
 use crate::generator::color::AverageTargetColor;
 use crate::generator::geometry::RandomGeometry;
@@ -44,9 +46,12 @@ fn main() {
         return;
     };
 
-    let target = img
-        .resize(cli.rescale_size, cli.rescale_size, FilterType::Nearest)
-        .into_rgba8();
+    let target = if cli.rescale_size != 0 {
+        img.resize(cli.rescale_size, cli.rescale_size, FilterType::Nearest)
+           .into_rgba8()
+    } else {
+        img.into_rgba8()
+    };
 
     info!(
         "Successfully loaded image ({}x{})",
@@ -70,11 +75,19 @@ fn main() {
 
     let error_metric = SquaredError;
 
+    let cpu_mode = match cli.jobs {
+        None => CpuMode::Sequential,
+        Some(jobs) => CpuMode::Parallel(jobs),
+    };
+
+    let evaluator = CpuEvaluator::new(cpu_mode);
+
     let mut abstractifier = Abstractifier::new(
         target,
         canvas,
         generator,
         error_metric,
+        evaluator,
         cli.candidats,
         cli.seed,
     );
@@ -94,7 +107,7 @@ fn main() {
                 info!(
                     "Iteration {i}: error = {}, improvement = {}",
                     result.error,
-                    improvement
+                    improvement,
                 );
             }
             None => {

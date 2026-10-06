@@ -18,6 +18,15 @@ pub trait Primitive {
         color: Rgba<u8>,
     );
 
+    fn for_each_pixel<F>(
+        &self,
+        width: u32,
+        height: u32,
+        f: F,
+    )
+    where
+        F: FnMut(u32, u32);
+
     fn draw(
         &self,
         canvas: &mut RgbaImage,

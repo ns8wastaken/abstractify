@@ -17,11 +17,15 @@ pub struct Cli {
     #[arg(short = 'n', long, default_value_t = 100)]
     pub steps: u64,
 
+    /// Largest side length of the rescaled image while approximating shapes, 0 for original size (aspect ratio is preserved)
+    #[arg(short, long, default_value_t = 500)]
+    pub rescale_size: u32,
+
     /// Seed for the rng
     #[arg(short, long, default_value_t = 0)]
     pub seed: u64,
 
-    /// Largest side length of the rescaled image while approximating shapes (aspect ratio is preserved)
-    #[arg(short, long, default_value_t = 500)]
-    pub rescale_size: u32,
+    /// Thread count for parallelism
+    #[arg(short, long)]
+    pub jobs: Option<usize>,
 }

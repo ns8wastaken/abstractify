@@ -11,6 +11,7 @@ dependencies = [
  "image",
  "log",
  "rand 0.10.3",
+ "rayon",
 ]
 
 [[package]]

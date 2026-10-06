@@ -1,14 +1,8 @@
 use image::{Rgba, RgbaImage};
 use rand::{Rng, RngExt};
 
-use crate::{
-    generator::geometry::GeometryGenerator,
-    primitive::{
-        Circle,
-        Shape,
-        ShapeKind,
-    },
-};
+use crate::generator::geometry::GeometryGenerator;
+use crate::primitive::{Circle, Shape, ShapeKind};
 
 pub struct RandomGeometry {
     enabled_shapes: Vec<ShapeKind>,
