@@ -23,6 +23,31 @@ impl Primitive for Circle {
         }
     }
 
+    fn contains(
+        &self,
+        x: i32,
+        y: i32,
+    ) -> bool {
+        let dx = x - self.x;
+        let dy = y - self.y;
+
+        let radius = self.radius as i32;
+
+        dx * dx + dy * dy
+            <= radius * radius
+    }
+
+    fn color(&self) -> Rgba<u8> {
+        self.color
+    }
+
+    fn set_color(
+        &mut self,
+        color: Rgba<u8>,
+    ) {
+        self.color = color;
+    }
+
     fn draw(&self, canvas: &mut RgbaImage) {
         let bounds = self.bounds();
 

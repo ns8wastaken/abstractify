@@ -1,7 +1,9 @@
 use image::RgbaImage;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 use crate::error::ErrorMetric;
-use crate::shape_generator::ShapeGenerator;
+use crate::generator::ShapeGenerator;
 use crate::primitive::{Primitive, Shape};
 
 #[derive(Debug, Clone)]
@@ -15,13 +17,14 @@ pub struct Abstractifier<G, E> {
     target: RgbaImage,
     canvas: RgbaImage,
 
-    shapes_used: Vec<Shape>,
-
     generator: G,
     error_metric: E,
 
+    rng: StdRng,
+
     error: u64,
     candidates_per_step: usize,
+    shapes_used: Vec<Shape>,
 }
 
 impl<G, E> Abstractifier<G, E>
@@ -35,6 +38,7 @@ where
         generator: G,
         error_metric: E,
         candidates_per_step: usize,
+        seed: u64,
     ) -> Self {
         let error = error_metric.total(&target, &canvas);
 
@@ -44,6 +48,7 @@ where
             shapes_used: Vec::new(),
             generator,
             error_metric,
+            rng: StdRng::seed_from_u64(seed),
             error,
             candidates_per_step,
         }
@@ -57,6 +62,7 @@ where
 
         for _ in 0..self.candidates_per_step {
             let shape = self.generator.generate(
+                &mut self.rng,
                 &self.target,
                 &self.canvas,
             );

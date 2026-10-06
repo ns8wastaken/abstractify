@@ -1,6 +1,7 @@
 use image::RgbaImage;
 
-use crate::{error::{ErrorMetric, SquaredError}, primitive::Bounds};
+use crate::error::{ErrorMetric, SquaredError};
+use crate::primitive::Bounds;
 
 pub struct Rmse;
 

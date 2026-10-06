@@ -1,10 +1,12 @@
 use image::RgbaImage;
+use rand::Rng;
 
 use crate::primitive::Shape;
 
 pub trait ShapeGenerator {
-    fn generate(
+    fn generate<R: Rng + ?Sized>(
         &mut self,
+        rng: &mut R,
         target: &RgbaImage,
         canvas: &RgbaImage,
     ) -> Shape;

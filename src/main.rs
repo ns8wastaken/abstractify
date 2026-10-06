@@ -3,7 +3,7 @@ mod blend;
 mod error;
 mod primitive;
 mod canvas;
-mod shape_generator;
+mod generator;
 mod abstractifier;
 
 use clap::Parser;
@@ -11,7 +11,13 @@ use cli_parser::Cli;
 use image::{ImageReader, imageops::FilterType};
 use log::{LevelFilter, error, info, warn};
 
-use crate::{abstractifier::Abstractifier, canvas::Canvas, error::SquaredError, primitive::ShapeKind, shape_generator::RandomShapeGenerator};
+use crate::abstractifier::Abstractifier;
+use crate::canvas::Canvas;
+use crate::error::SquaredError;
+use crate::generator::CandidateGenerator;
+use crate::generator::color::AverageTargetColor;
+use crate::generator::geometry::RandomGeometry;
+use crate::primitive::ShapeKind;
 
 fn main() {
     let cli = Cli::parse();
@@ -39,7 +45,7 @@ fn main() {
     };
 
     let target = img
-        .resize(300, 300, FilterType::Nearest)
+        .resize(cli.rescale_size, cli.rescale_size, FilterType::Nearest)
         .into_rgba8();
 
     info!(
@@ -50,10 +56,16 @@ fn main() {
 
     let canvas = Canvas::average(&target);
 
-    let generator = RandomShapeGenerator::new(
-        vec![ShapeKind::Circle],
-        0.25,
-        32,
+    let generator = CandidateGenerator::new(
+        RandomGeometry::new(
+            vec![ShapeKind::Circle],
+            0.25,
+        ),
+        // RandomColor::new(
+        //     32,
+        //     255,
+        // ),
+        AverageTargetColor::new(255 / 2),
     );
 
     let error_metric = SquaredError;
@@ -64,6 +76,7 @@ fn main() {
         generator,
         error_metric,
         cli.candidats,
+        cli.seed,
     );
 
     let output_dir = "output";
@@ -75,13 +88,6 @@ fn main() {
 
     for i in 1..=cli.steps {
         let result = abstractifier.step();
-
-        let path = format!("{output_dir}/img_{i}.png");
-
-        if let Err(err) = abstractifier.canvas().save(&path) {
-            error!("Failed to save {path}: {err}");
-            return;
-        }
 
         match result.improvement {
             Some(improvement) => {
@@ -98,5 +104,12 @@ fn main() {
                 );
             }
         }
+    }
+
+    let path = format!("{output_dir}/img.png");
+
+    if let Err(err) = abstractifier.canvas().save(&path) {
+        error!("Failed to save {path}: {err}");
+        return;
     }
 }
